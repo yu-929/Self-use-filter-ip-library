@@ -1,0 +1,108 @@
+name: Collect CF IP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Sources
+        run: |
+          mkdir -p data
+
+          cat > urls.txt << 'EOF'
+          https://bestcf.pages.dev/uouin/all.txt
+          https://bestcf.pages.dev/wetest/ipv4.txt
+          https://bestcf.pages.dev/moistr/all.txt
+          https://bestcf.pages.dev/xinyitang3/ipv4.txt
+          https://bestcf.pages.dev/gslege/Cfxyz.txt
+          https://bestcf.pages.dev/gslege/SG.txt
+          https://bestcf.pages.dev/gslege/DE.txt
+          https://bestcf.pages.dev/gslege/US.txt
+          https://bestcf.pages.dev/gslege/NL.txt
+          https://bestcf.pages.dev/gslege/JP.txt
+          https://bestcf.pages.dev/cfyes/ipv4.txt
+          https://bestcf.pages.dev/cfyes/ipv6.txt
+          https://addressesapi.090227.xyz/CloudFlareYes
+          https://cf.junzhen.qzz.io/best_ips.txt
+          https://cf.junzhen.qzz.io/best_ips_bj.txt
+          https://raw.githubusercontent.com/svip-s/cloudflare_ip/main/best_ips.txt
+          https://raw.githubusercontent.com/love-ztm/cfip/main/best_ips.txt
+          https://raw.githubusercontent.com/love-ztm/cfip/main/ubest_ips.txt
+          https://bestcf.pages.dev/nirevil/ipv4.txt
+          https://bestcf.pages.dev/nirevil/ipv6.txt
+          https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt
+          https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv6.txt
+          https://bestcf.pages.dev/zhixuanwang/ipv4-onlyip.txt
+          https://raw.githubusercontent.com/joname1/BestCFip/main/ipv4.txt
+          https://raw.githubusercontent.com/joname1/BestCFip/main/ipv6.txt
+          https://raw.githubusercontent.com/Senflare/Senflare-IP/main/IPlist-Pro.txt
+          https://bestcf.pages.dev/vvhan/ipv4.txt
+          https://bestcf.pages.dev/vvhan/ipv6.txt
+          https://bestcf.pages.dev/ircf/ipv4.txt
+          https://raw.githubusercontent.com/einsitang/Cloudflare-IP/main/result.csv
+          https://raw.githubusercontent.com/hubbylei/Cloudflare-IP/main/result.csv
+          https://raw.githubusercontent.com/gshtwy/CF-DNS-Clone/main/wetest-cloudflare-v4.txt
+          https://warp-masque-bestip.pages.dev/?ips=50&level=all&port=random
+          https://warp-masque-bestip.pages.dev/?ips=50&level=p0&port=random
+          https://warp-masque-bestip.pages.dev/?ips=50&level=198&port=random
+          https://warp-masque-bestip.pages.dev/?ips=50&level=197&port=random
+          https://warp-masque-bestip.pages.dev/?ips=50&level=193&port=random
+          https://warp-masque-bestip.pages.dev/?ips=50&level=192&port=random
+          https://090227.pages.dev/bestcf?isp=all&ips=20
+          https://090227.pages.dev/bestcf?isp=ct&ips=50
+          https://090227.pages.dev/bestcf?isp=cu&ips=50
+          https://090227.pages.dev/bestcf?isp=cmcc&ips=50
+          https://randomip.pages.dev/?c=all&n=50&p=random
+          https://randomip.pages.dev/?c=104.16.0.0/12&n=50&p=random
+          https://randomip.pages.dev/?c=188.114.96.0/22&n=50&p=random
+          https://randomip.pages.dev/?c=162.159.38.0/24&n=50&p=443
+          https://randomip.pages.dev/?c=162.159.46.0/24&n=50&p=443
+          https://randomip.pages.dev/?c=162.158.0.0/15&n=50&p=random
+          https://randomip.pages.dev/?c=172.64.0.0/13&n=50&p=random
+          https://randomip.pages.dev/?c=103.21.244.0/24&n=50&p=random
+          https://randomip.pages.dev/?c=27.50.48.0/24&n=50&p=random
+          https://randomip.pages.dev/?c=162.159.48.0/22&n=50&p=random
+          https://randomip.pages.dev/?c=198.41.208.0/23&n=50&p=random
+          EOF
+
+          n=0
+          while read url
+          do
+            curl -L \
+              --connect-timeout 15 \
+              --max-time 60 \
+              "$url" \
+              -o "data/$n.txt" || true
+            n=$((n+1))
+          done < urls.txt
+
+      - name: Extract IP Port
+        run: |
+          cat data/* > all.txt
+
+          grep -hEo '([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{1,5}' all.txt \
+          | sed 's/\r//g' \
+          | sort -u > ip.txt
+
+          echo "Total:"
+          wc -l ip.txt
+
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git add ip.txt
+
+          git commit -m "update ip list" || exit 0
+
+          git push
