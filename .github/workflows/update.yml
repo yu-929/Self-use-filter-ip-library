@@ -19,8 +19,6 @@ jobs:
           mkdir -p data
 
           cat > urls.txt << 'EOF'
-          # 新增链接放最上方
-          https://bestcf.pages.dev/luoli/all.txt
           https://bestcf.pages.dev/uouin/all.txt
           https://bestcf.pages.dev/wetest/ipv4.txt
           https://bestcf.pages.dev/moistr/all.txt
@@ -74,46 +72,38 @@ jobs:
           https://randomip.pages.dev/?c=27.50.48.0/24&n=50&p=random
           https://randomip.pages.dev/?c=162.159.48.0/22&n=50&p=random
           https://randomip.pages.dev/?c=198.41.208.0/23&n=50&p=random
+          https://bestcf.pages.dev/luoli/all.txt
           EOF
 
           n=0
-          while read -r url
+          while read url
           do
-            echo "Downloading: $url"
-            # 添加UA、禁用进度条、容错下载
             curl -L \
-              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" \
               --connect-timeout 15 \
               --max-time 60 \
-              -s -S \
               "$url" \
-              -o "data/$n.txt" || echo "Fail download $url"
+              -o "data/$n.txt" || true
             n=$((n+1))
           done < urls.txt
 
-      - name: Extract IP:Port (IPv4 only)
+      - name: Extract IP Port
         run: |
-          # 合并所有下载文件
-          cat data/* > all_raw.txt
-          # 匹配 IPv4:端口 格式，清除Windows换行、去重、过滤无效IP
-          grep -hEo '([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{1,5}' all_raw.txt \
+          cat data/* > all.txt
+
+          grep -hEo '([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{1,5}' all.txt \
           | sed 's/\r//g' \
-          # 过滤非法IP段（0.0.0.0、127、192.168、10内网等）
-          | grep -vE '^(0|10|127|169\.254|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.' \
           | sort -u > ip.txt
 
-          echo "=== 有效IP:端口总数 ==="
+          echo "Total:"
           wc -l ip.txt
-          rm -f all_raw.txt
 
-      - name: Commit & Push Changes
+      - name: Commit
         run: |
-          git config --global user.name github-actions
-          git config --global user.email github-actions@github.com
+          git config user.name github-actions
+          git config user.email github-actions@github.com
 
           git add ip.txt
-          # 无变更直接退出，不报错
-          git diff --quiet && git diff --staged --quiet || {
-            git commit -m "Auto update CF ip list $(date +'%Y-%m-%d %H:%M:%S')"
-            git push
-          }
+
+          git commit -m "update ip list" || exit 0
+
+          git push
